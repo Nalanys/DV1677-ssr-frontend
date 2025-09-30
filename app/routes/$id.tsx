@@ -1,7 +1,7 @@
 import type { Route } from "./+types/$id";
 import { Form, redirect, useLoaderData } from "react-router";
 
-const API_BASE = "http://localhost:1337";
+const API_BASE = import.meta.env.VITE_API_BASE as string;
 
 type Doc = { id: string; title: string; content: string };
 type LoaderData = { doc: Doc };

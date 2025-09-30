@@ -3,7 +3,7 @@ import { redirect, useLoaderData } from "react-router";
 import HomePage from "../pages/HomePage";
 import type { DocListItem } from "../components/DocsList";
 
-const API_BASE = "http://localhost:1337";
+const API_BASE = import.meta.env.VITE_API_BASE as string;
 
 type LoaderData = { docs: DocListItem[] };
 
