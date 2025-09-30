@@ -1,10 +1,16 @@
 import React from "react";
+import CreateForm from "../components/CreateForm";
+import DocsList, { type DocListItem } from "../components/DocsList";
 
-const HomePage: React.FC = () => {
+export interface HomePageProps {
+  docs: DocListItem[];
+}
+
+const HomePage: React.FC<HomePageProps> = ({ docs }) => {
   return (
     <div>
-      <h2>Home Page</h2>
-      <p>This is the homepage</p>
+      <DocsList docs={docs} />
+      <CreateForm />
     </div>
   );
 };
