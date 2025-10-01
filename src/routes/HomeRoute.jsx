@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import DocsList from "../components/DocsList";
 import CreateForm from "../components/CreateForm";
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/"
 
 export default function HomeRoute() {
   const [docs, setDocs] = useState([]);
