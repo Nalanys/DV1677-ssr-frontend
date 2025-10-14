@@ -1,9 +1,12 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import CodeEditor from "./CodeEditor";
 
-const API_BASE = "http://localhost:1337/"
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/";
 
 export default function CreateForm() {
   const navigate = useNavigate();
+  const [isCode, setIsCode] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -32,8 +35,24 @@ export default function CreateForm() {
         <label htmlFor="title">Title</label>
         <input type="text" name="title" defaultValue="" />
 
+        <label>
+          <input
+            type="checkbox"
+            checked={isCode}
+            onChange={(e) => setIsCode(e.target.checked)}
+          />
+          Code mode
+        </label>
+
+        <input type="hidden" name="docType" value={isCode ? "code" : "doc"} />
+
         <label htmlFor="content">Content</label>
-        <textarea name="content" defaultValue="" />
+
+        {isCode ? (
+          <CodeEditor name="content" defaultValue="" />
+        ) : (
+          <textarea name="content" defaultValue="" />
+        )}
 
         <input type="submit" value="Create" />
       </form>
