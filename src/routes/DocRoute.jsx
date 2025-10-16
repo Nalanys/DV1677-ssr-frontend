@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CodeEditor from "../components/CodeEditor";
 
-const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/";
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql";
 
 export default function DocRoute() {
   const { id } = useParams();
@@ -12,37 +12,75 @@ export default function DocRoute() {
   const [isExecuting, setIsExecuting] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/${id}`, { headers: { Accept: "application/json" } });
-        if (!res.ok) throw new Error("Not found");
-        const data = await res.json();
-        setDoc({
-          id: String(data._id ?? data.id ?? id),
-          title: data.title ?? "",
-          content: data.content ?? "",
-          docType: data.docType ?? "doc",
-        });
-      } catch (e) {
-        console.error(e);
-        setDoc(null);
-      }
-    })();
+      (async () => {
+        try {
+          const res = await fetch(`${API_BASE}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+            body: JSON.stringify({
+              query: `{
+                document(id: \"${id}\") {
+                  _id
+                  title
+                  content
+                  docType
+                }
+              }`
+            })
+          });
+          if (!res.ok) throw new Error("Not found");
+          const { data } = await res.json();
+          if (!data || !data.document) throw new Error("Document not found");
+          setDoc({
+            id: String(data.document._id ?? data.document.id ?? id),
+            title: data.document.title ?? "",
+            content: data.document.content ?? "",
+            docType: data.document.docType ?? "doc",
+          });
+        } catch (e) {
+          console.error(e);
+          setDoc(null);
+        }
+      })();
   }, [id]);
 
   async function onSubmit(e) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const payload = Object.fromEntries(fd);
-
-    const res = await fetch(`${API_BASE}/update`, {
+    const graphqlQuery = `mutation UpdateDocument($id: ID!, $title: String, $content: String, $docType: String) {
+      updateDocument(id: $id, title: $title, content: $content, docType: $docType) {
+        _id
+        title
+        content
+        docType
+      }
+    }`;
+    const res = await fetch(`${API_BASE}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        query: graphqlQuery,
+        variables: {
+          id: payload.id,
+          title: payload.title || "",
+          content: payload.content || "",
+          docType: payload.docType || "doc",
+        }
+      }),
     });
 
     if (!res.ok) {
-      alert("Could not update document");
+      alert("Could not update document (network error)");
+      return;
+    }
+
+    const result = await res.json();
+    if (result == 0) {
+      alert("Could not update document (server error)");
       return;
     }
     navigate("/");
