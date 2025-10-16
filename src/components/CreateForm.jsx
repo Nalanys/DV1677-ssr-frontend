@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import CodeEditor from "./CodeEditor";
 
-const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/";
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql";
 
 export default function CreateForm() {
   const navigate = useNavigate();
@@ -12,11 +12,21 @@ export default function CreateForm() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const payload = Object.fromEntries(fd);
+    const graphqlQuery = `mutation CreateDocument($title: String!, $content: String!, $docType: String!) {
+      createDocument(title: $title, content: $content, docType: $docType)
+    }`;
 
-    const res = await fetch(`${API_BASE}/`, {
+    const res = await fetch(`${API_BASE}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        query: graphqlQuery,
+        variables: {
+          title: payload.title || "",
+          content: payload.content || "",
+          docType: payload.docType || "doc",
+        }
+      }),
     });
 
     if (!res.ok) {
@@ -24,8 +34,8 @@ export default function CreateForm() {
       return;
     }
 
-    const { id } = await res.json();
-    navigate(`/${id}`);
+    const result = await res.json();
+    navigate(`/${result.data.createDocument}`);
   }
 
   return (
