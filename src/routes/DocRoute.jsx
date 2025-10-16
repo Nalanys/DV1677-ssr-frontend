@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import CodeEditor from "../components/CodeEditor";
 
-const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/"
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/";
 
 export default function DocRoute() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [doc, setDoc] = useState(null);
+  const [execOutput, setExecOutput] = useState("");
+  const [isExecuting, setIsExecuting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -18,6 +21,7 @@ export default function DocRoute() {
           id: String(data._id ?? data.id ?? id),
           title: data.title ?? "",
           content: data.content ?? "",
+          docType: data.docType ?? "doc",
         });
       } catch (e) {
         console.error(e);
@@ -44,6 +48,29 @@ export default function DocRoute() {
     navigate("/");
   }
 
+  async function handleExecute() {
+    if (!doc?.content) return;
+    setIsExecuting(true);
+    setExecOutput("");
+    try {
+      const base64Code = btoa(doc.content);
+      const res = await fetch("https://execjs.emilfolino.se/code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: base64Code }),
+      });
+      if (!res.ok) throw new Error("Execution failed");
+      const data = await res.json();
+      const decoded = atob(data.data || "");
+      setExecOutput(decoded);
+    } catch (err) {
+      console.error(err);
+      setExecOutput(`Error: ${err.message}`);
+    } finally {
+      setIsExecuting(false);
+    }
+  }
+
   if (!doc) return <p>Loading...</p>;
 
   return (
@@ -56,7 +83,18 @@ export default function DocRoute() {
         <input type="text" name="title" defaultValue={doc.title} />
 
         <label htmlFor="content">Content</label>
-        <textarea name="content" defaultValue={doc.content} />
+
+        {doc.docType === "code" ? (
+          <>
+            <CodeEditor name="content" defaultValue={doc.content} />
+            <button type="button" onClick={handleExecute} disabled={isExecuting}>
+              {isExecuting ? "Executing code..." : "Execute Code"}
+            </button>
+            {execOutput ? <pre className="codeOutput">{execOutput}</pre> : null}
+          </>
+        ) : (
+          <textarea name="content" defaultValue={doc.content} />
+        )}
 
         <input type="submit" value="Update" />
       </form>
