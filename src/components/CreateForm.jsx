@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import CodeEditor from "./CodeEditor";
 
-const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql";
+const API_BASE = "http://localhost:1337/graphql";
 
 export default function CreateForm() {
   const navigate = useNavigate();

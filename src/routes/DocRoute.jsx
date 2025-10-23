@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CodeEditor from "../components/CodeEditor";
+import { io } from "socket.io-client";
 
-const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql";
+const API_BASE = "http://localhost:1337/graphql";
+const SERVER_URL = "http://localhost:1337";
 
 export default function DocRoute() {
   const { id } = useParams();
@@ -11,41 +13,88 @@ export default function DocRoute() {
   const [execOutput, setExecOutput] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
 
+  const socketRef = useRef(null);
+
   useEffect(() => {
-      (async () => {
-        try {
-          const res = await fetch(`${API_BASE}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Accept": "application/json"
-            },
-            body: JSON.stringify({
-              query: `{
-                document(id: \"${id}\") {
-                  _id
-                  title
-                  content
-                  docType
-                }
-              }`
-            })
-          });
-          if (!res.ok) throw new Error("Not found");
-          const { data } = await res.json();
-          if (!data || !data.document) throw new Error("Document not found");
-          setDoc({
-            id: String(data.document._id ?? data.document.id ?? id),
-            title: data.document.title ?? "",
-            content: data.document.content ?? "",
-            docType: data.document.docType ?? "doc",
-          });
-        } catch (e) {
-          console.error(e);
-          setDoc(null);
-        }
-      })();
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            query: `{
+              document(id: \"${id}\") {
+                _id
+                title
+                content
+                docType
+              }
+            }`
+          })
+        });
+
+        if (!res.ok) throw new Error("Not found");
+        const { data } = await res.json();
+        if (!data || !data.document) throw new Error("Document not found");
+
+        if (!isMounted) return;
+
+        const fetchedDoc = {
+          id: String(data.document._id ?? data.document.id ?? id),
+          title: data.document.title ?? "",
+          content: data.document.content ?? "",
+          docType: data.document.docType ?? "doc",
+        };
+
+        setDoc(fetchedDoc);
+
+        socketRef.current = io(SERVER_URL);
+        const socket = socketRef.current;
+
+        socket.on("connect", () => {
+          console.log("Connected to socket:", socket.id);
+          socket.emit("create", fetchedDoc.id);
+        });
+
+        socket.on("doc", (data) => {
+          setDoc((prev) =>
+            prev && prev.id === data._id
+              ? { ...prev, content: data.html }
+              : prev
+          );
+        });
+      } catch (e) {
+        console.error(e);
+        setDoc(null);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
   }, [id]);
+
+  function handleLiveChange(e) {
+    const newValue = e.target.value;
+    setDoc((prev) => (prev ? { ...prev, content: newValue } : prev));
+
+    if (doc?.id && socketRef.current) {
+      const data = {
+        _id: doc.id,
+        html: newValue,
+      };
+      socketRef.current.emit("doc", data);
+    }
+  }
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -59,9 +108,13 @@ export default function DocRoute() {
         docType
       }
     }`;
+
     const res = await fetch(`${API_BASE}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
       body: JSON.stringify({
         query: graphqlQuery,
         variables: {
@@ -83,6 +136,7 @@ export default function DocRoute() {
       alert("Could not update document (server error)");
       return;
     }
+
     navigate("/");
   }
 
@@ -131,7 +185,11 @@ export default function DocRoute() {
             {execOutput ? <pre className="codeOutput">{execOutput}</pre> : null}
           </>
         ) : (
-          <textarea name="content" defaultValue={doc.content} />
+          <textarea
+            name="content"
+            value={doc.content}
+            onChange={handleLiveChange}
+          />
         )}
 
         <input type="submit" value="Update" />
