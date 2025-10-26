@@ -83,7 +83,7 @@ export default function DocRoute() {
     };
   }, [id]);
 
-  function handleLiveChange(e) {
+  async function handleLiveChange(e) {
     const newValue = e.target.value;
     setDoc((prev) => (prev ? { ...prev, content: newValue } : prev));
 
@@ -94,12 +94,22 @@ export default function DocRoute() {
       };
       socketRef.current.emit("doc", data);
     }
+
+    if (doc?.id) {
+      await updateDocument(doc.id, doc.title, newValue, doc.docType);
+    }
   }
 
-  async function onSubmit(e) {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(fd);
+  async function handleTitleChange(e) {
+    const newTitle = e.target.value;
+    setDoc((prev) => (prev ? { ...prev, title: newTitle } : prev));
+
+    if (doc?.id) {
+      await updateDocument(doc.id, newTitle, doc.content, doc.docType);
+    }
+  }
+
+  async function updateDocument(id, title, content, docType) {
     const graphqlQuery = `mutation UpdateDocument($id: ID!, $title: String, $content: String, $docType: String) {
       updateDocument(id: $id, title: $title, content: $content, docType: $docType) {
         _id
@@ -109,34 +119,39 @@ export default function DocRoute() {
       }
     }`;
 
-    const res = await fetch(`${API_BASE}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        query: graphqlQuery,
-        variables: {
-          id: payload.id,
-          title: payload.title || "",
-          content: payload.content || "",
-          docType: payload.docType || "doc",
-        }
-      }),
-    });
+    try {
+      const res = await fetch(`${API_BASE}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          query: graphqlQuery,
+          variables: {
+            id: id,
+            title: title || "",
+            content: content || "",
+            docType: docType || "doc",
+          }
+        }),
+      });
 
-    if (!res.ok) {
-      alert("Could not update document (network error)");
-      return;
+      if (!res.ok) {
+        console.error("Could not update document (network error)");
+        return;
+      }
+
+      const result = await res.json();
+      if (!result.data) {
+        console.error("Could not update document (server error)");
+      }
+    } catch (err) {
+      console.error("Error updating document:", err);
     }
+  }
 
-    const result = await res.json();
-    if (result == 0) {
-      alert("Could not update document (server error)");
-      return;
-    }
-
+  function handleGoBack() {
     navigate("/");
   }
 
@@ -167,12 +182,17 @@ export default function DocRoute() {
 
   return (
     <>
+      <button type="button" onClick={handleGoBack}>Back to Documents</button>
       <h2>Document</h2>
-      <form className="new-doc" onSubmit={onSubmit}>
-        <input type="hidden" name="id" value={doc.id} />
-
+      <div className="new-doc">
+        
         <label htmlFor="title">Title</label>
-        <input type="text" name="title" defaultValue={doc.title} />
+        <input 
+          type="text" 
+          name="title" 
+          value={doc.title} 
+          onChange={handleTitleChange}
+        />
 
         <label htmlFor="content">Content</label>
 
@@ -191,9 +211,7 @@ export default function DocRoute() {
             onChange={handleLiveChange}
           />
         )}
-
-        <input type="submit" value="Update" />
-      </form>
+      </div>
     </>
   );
 }
