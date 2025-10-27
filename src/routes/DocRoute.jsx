@@ -14,6 +14,7 @@ export default function DocRoute() {
   const [isExecuting, setIsExecuting] = useState(false);
 
   const socketRef = useRef(null);
+  const saveTimerRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -76,6 +77,9 @@ export default function DocRoute() {
 
     return () => {
       isMounted = false;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -83,29 +87,36 @@ export default function DocRoute() {
     };
   }, [id]);
 
-  async function handleLiveChange(e) {
-    const newValue = e.target.value;
+  function debounceSave(next) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(next, 400);
+  }
+
+  function handleLiveChange(nextValueOrEvent) {
+    const newValue =
+      typeof nextValueOrEvent === "string"
+        ? nextValueOrEvent
+        : nextValueOrEvent?.target?.value ?? "";
+
     setDoc((prev) => (prev ? { ...prev, content: newValue } : prev));
 
     if (doc?.id && socketRef.current) {
-      const data = {
-        _id: doc.id,
-        html: newValue,
-      };
-      socketRef.current.emit("doc", data);
+      socketRef.current.emit("doc", { _id: doc.id, html: newValue });
     }
 
     if (doc?.id) {
-      await updateDocument(doc.id, doc.title, newValue, doc.docType);
+      const { id: docId, title, docType } = doc;
+      debounceSave(() => updateDocument(docId, title, newValue, docType));
     }
   }
 
-  async function handleTitleChange(e) {
+  function handleTitleChange(e) {
     const newTitle = e.target.value;
     setDoc((prev) => (prev ? { ...prev, title: newTitle } : prev));
 
     if (doc?.id) {
-      await updateDocument(doc.id, newTitle, doc.content, doc.docType);
+      const { id: docId, content, docType } = doc;
+      debounceSave(() => updateDocument(docId, newTitle, content, docType));
     }
   }
 
@@ -184,8 +195,8 @@ export default function DocRoute() {
     <>
       <button type="button" onClick={handleGoBack}>Back to Documents</button>
       <h2>Document</h2>
+
       <div className="new-doc">
-        
         <label htmlFor="title">Title</label>
         <input 
           type="text" 
@@ -198,7 +209,10 @@ export default function DocRoute() {
 
         {doc.docType === "code" ? (
           <>
-            <CodeEditor name="content" defaultValue={doc.content} />
+            <CodeEditor
+              value={doc.content}
+              onChange={handleLiveChange} // ← same handler as textarea
+            />
             <button type="button" onClick={handleExecute} disabled={isExecuting}>
               {isExecuting ? "Executing code..." : "Execute Code"}
             </button>
