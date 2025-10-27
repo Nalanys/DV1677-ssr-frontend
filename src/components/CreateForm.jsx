@@ -2,7 +2,16 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import CodeEditor from "./CodeEditor";
 
-const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql";
+const API_BASE = "http://localhost:1337/graphql";
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
 
 export default function CreateForm() {
   const navigate = useNavigate();
@@ -15,10 +24,9 @@ export default function CreateForm() {
     const graphqlQuery = `mutation CreateDocument($title: String!, $content: String!, $docType: String!) {
       createDocument(title: $title, content: $content, docType: $docType)
     }`;
-
     const res = await fetch(`${API_BASE}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         query: graphqlQuery,
         variables: {
@@ -33,7 +41,6 @@ export default function CreateForm() {
       alert("Could not create document");
       return;
     }
-
     const result = await res.json();
     navigate(`/${result.data.createDocument}`);
   }
