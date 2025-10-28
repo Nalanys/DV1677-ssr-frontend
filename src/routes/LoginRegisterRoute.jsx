@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "http://localhost:1337/graphql";
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql";
 
 export default function LoginRegisterRoute() {
   const navigate = useNavigate();

@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import CodeEditor from "./CodeEditor";
 
-const API_BASE = "http://localhost:1337/graphql";
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql";
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
@@ -16,11 +16,13 @@ function getAuthHeaders() {
 export default function CreateForm() {
   const navigate = useNavigate();
   const [isCode, setIsCode] = useState(false);
+  const [content, setContent] = useState("");
 
   async function onSubmit(e) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(fd);
+    const withoutContentPayload = Object.fromEntries(fd);
+    const payload = { ...withoutContentPayload, content };
     const graphqlQuery = `mutation CreateDocument($title: String!, $content: String!, $docType: String!) {
       createDocument(title: $title, content: $content, docType: $docType)
     }`;
@@ -66,9 +68,9 @@ export default function CreateForm() {
         <label htmlFor="content">Content</label>
 
         {isCode ? (
-          <CodeEditor name="content" defaultValue="" />
+          <CodeEditor name="content" value={content} onChange={setContent}/>
         ) : (
-          <textarea name="content" defaultValue="" />
+          <textarea name="content"value={content} onChange={(e) => setContent(e.target.value)} />
         )}
 
         <input type="submit" value="Create" />
