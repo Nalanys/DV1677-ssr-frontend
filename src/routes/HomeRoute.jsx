@@ -2,20 +2,26 @@ import { useEffect, useState } from "react";
 import DocsList from "../components/DocsList";
 import CreateForm from "../components/CreateForm";
 
-const API_BASE = "http://localhost:1337/graphql"
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql"
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export default function HomeRoute() {
   const [docs, setDocs] = useState([]);
-
   useEffect(() => {
     (async () => {
+      
       try {
         const res = await fetch(`${API_BASE}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             query: "{ documents { _id title } }"
           })

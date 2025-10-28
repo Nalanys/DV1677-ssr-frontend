@@ -44,6 +44,11 @@ header {
   padding: 1.4rem 3rem;
 }
 
+header a {
+  color: #fff;
+  text-decoration: none;
+}
+
 main {
   width: 96%;
   max-width: 64rem;

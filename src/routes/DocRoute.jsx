@@ -3,8 +3,17 @@ import { useNavigate, useParams } from "react-router-dom";
 import CodeEditor from "../components/CodeEditor";
 import { io } from "socket.io-client";
 
-const API_BASE = "http://localhost:1337/graphql";
-const SERVER_URL = "http://localhost:1337";
+const API_BASE = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net/graphql";
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+const SERVER_URL = "https://jsramverk-editor-alai20-sogi20-eaa9cxenbbfje6dt.northeurope-01.azurewebsites.net";
 
 export default function DocRoute() {
   const { id } = useParams();
@@ -12,6 +21,8 @@ export default function DocRoute() {
   const [doc, setDoc] = useState(null);
   const [execOutput, setExecOutput] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteStatus, setInviteStatus] = useState("");
 
   const socketRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -23,10 +34,7 @@ export default function DocRoute() {
       try {
         const res = await fetch(`${API_BASE}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             query: `{
               document(id: \"${id}\") {
@@ -133,10 +141,7 @@ export default function DocRoute() {
     try {
       const res = await fetch(`${API_BASE}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           query: graphqlQuery,
           variables: {
@@ -174,7 +179,7 @@ export default function DocRoute() {
       const base64Code = btoa(doc.content);
       const res = await fetch("https://execjs.emilfolino.se/code", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ code: base64Code }),
       });
       if (!res.ok) throw new Error("Execution failed");
@@ -186,6 +191,47 @@ export default function DocRoute() {
       setExecOutput(`Error: ${err.message}`);
     } finally {
       setIsExecuting(false);
+    }
+  }
+
+  async function handleInviteSubmit(e) {
+    e.preventDefault();
+    setInviteStatus("");
+    if (!inviteEmail) {
+      setInviteStatus("Please enter an email address.");
+      return;
+    }
+    const graphqlQuery = `mutation InviteUserToDocument($documentId: ID!, $email: String!) {
+      inviteUserToDocument(documentId: $documentId, email: $email) {
+        _id
+        title
+      }
+    }`;
+    const res = await fetch(API_BASE, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        query: graphqlQuery,
+        variables: {
+          documentId: doc.id,
+          email: inviteEmail,
+        },
+      }),
+    });
+    if (!res.ok) {
+      setInviteStatus("Network error. Try again.");
+      return;
+    }
+    const result = await res.json();
+    if (result.errors && result.errors.length) {
+      setInviteStatus(result.errors.map((e) => e.message).join("\n"));
+      return;
+    }
+    if (result?.data?.inviteUserToDocument) {
+      setInviteStatus("User invited successfully!");
+      setInviteEmail("");
+    } else {
+      setInviteStatus("Could not invite user.");
     }
   }
 
@@ -226,6 +272,22 @@ export default function DocRoute() {
           />
         )}
       </div>
+
+      <form className="invite-user" onSubmit={handleInviteSubmit} style={{ marginTop: 32 }}>
+  
+        <h3>Invite user to this document</h3>
+        <label htmlFor="inviteEmail">Email address</label>
+        <input
+          type="email"
+          id="inviteEmail"
+          name="inviteEmail"
+          value={inviteEmail}
+          onChange={e => setInviteEmail(e.target.value)}
+          required
+        />
+        <button type="submit">Invite</button>
+        {inviteStatus && <p style={{ color: inviteStatus.includes("success") ? "green" : "crimson" }}>{inviteStatus}</p>}
+      </form>
     </>
   );
 }
