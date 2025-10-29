@@ -5,10 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>dv1677-ssr-frontend</title>
-    <script type="module" crossorigin src="/DV1677-ssr-frontend/assets/index-Bt16GhU-.js"></script>
+    <script type="module" crossorigin src="/DV1677-ssr-frontend/assets/index-CgSapbRh.js"></script>
     <link rel="stylesheet" crossorigin href="/DV1677-ssr-frontend/assets/index-DUj-2jfs.css">
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect');
+      if (redirect) {
+        history.replaceState(null, '', redirect);
+      }
+    </script>
   </body>
 </html>
