@@ -17,6 +17,7 @@ export default function CreateForm() {
   const navigate = useNavigate();
   const [isCode, setIsCode] = useState(false);
   const [content, setContent] = useState("");
+  const [loggedInState] = useState(!!localStorage.getItem("token"));
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -73,7 +74,7 @@ export default function CreateForm() {
           <textarea name="content"value={content} onChange={(e) => setContent(e.target.value)} />
         )}
 
-        <input type="submit" value="Create" />
+        <input type="submit" value="Create" disabled={!loggedInState}/>
       </form>
     </>
   );
